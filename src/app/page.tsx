@@ -1,13 +1,16 @@
 import Link from "next/link";
 
 import { LatestPost } from "~/app/_components/post";
+import { AirTable } from "./_components/airtable";
 import { auth } from "~/server/auth";
 import { api, HydrateClient } from "~/trpc/server";
+import { db } from "~/server/db";
 
 export default async function Home() {
   const hello = await api.post.hello({ text: "from tRPC" });
   const session = await auth();
-
+  const posts = await db.post.findMany();
+  console.log(posts);
   if (session?.user) {
     void api.post.getLatest.prefetch();
   }
@@ -43,6 +46,11 @@ export default async function Home() {
               </div>
             </Link>
           </div>
+          <div>
+            {posts.map((post) => (
+              <div key={post.id}>{post.name}</div>
+            ))}
+          </div>
           <div className="flex flex-col items-center gap-2">
             <p className="text-2xl text-white">
               {hello ? hello.greeting : "Loading tRPC query..."}
@@ -62,6 +70,7 @@ export default async function Home() {
           </div>
 
           {session?.user && <LatestPost />}
+          {session?.user && <AirTable />}
         </div>
       </main>
     </HydrateClient>
