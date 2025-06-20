@@ -22,8 +22,19 @@ model Post {
 
     createdBy   User   @relation(fields: [createdById], references: [id])
     createdById String
-
+    customFields Json?      // This will store all dynamic columns
     @@index([name])
+}
+
+
+
+model ColumnDefinition {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  type        String   // "string", "number", "boolean", "date"
+  isRequired  Boolean  @default(false)
+  defaultValue String?
+  createdAt   DateTime @default(now())
 }
 
 // Necessary for Next auth

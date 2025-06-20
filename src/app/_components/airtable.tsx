@@ -9,80 +9,78 @@ import {
   type ColumnDef,
   flexRender,
 } from "@tanstack/react-table";
+import { AddColumnButton } from "./addColumnButton";
 import EditableCell from "./editableCall";
 
 export function AirTable() {
-  const columns = useMemo<ColumnDef<Post>[]>(
+  // const { data } = api.post.getAll.useQuery();
+  const { data, isLoading } = api.post.getAllWithColumns.useQuery();
+  const posts = data?.posts ?? [];
+  const columnDefs = data?.columns ?? [];
+  // Generate columns with proper typing
+  const utils = api.useUtils();
+  const [name, setName] = useState("");
+  const createPost = api.post.create.useMutation({
+    onSuccess: async () => {
+      await utils.post.invalidate();
+      setName("");
+    },
+  });
+  const columns = useMemo(
     () => [
       {
         accessorKey: "id",
         header: "ID",
-        cell: (info) =>
-          info.getValue()
-            ? new String(info.getValue() as string).toLocaleString()
-            : null,
-
-        enableResizing: true,
+        cell: (info: { getValue: () => unknown }) =>
+          info.getValue()?.toString() ?? "",
       },
       {
         accessorKey: "name",
         header: "Name",
-        cell: (info) =>
-          EditableCell(
-            info.getValue()
-              ? new String(info.getValue() as string).toLocaleString()
-              : null,
-          ),
-        enableResizing: true,
+        cell: (info: { getValue: () => unknown; row: { original: any } }) => (
+          <EditableCell
+            value={info.getValue()}
+            postId={info.row.original.id}
+            columnId="name"
+            columnType="string"
+          />
+        ),
       },
-      {
-        accessorKey: "createdAt",
-        header: "Created",
-        cell: (info) =>
-          EditableCell(
-            info.getValue()
-              ? new Date(info.getValue() as string).toLocaleString()
-              : null,
-          ),
-        enableResizing: true,
-      },
-      {
-        accessorKey: "updatedAt",
-        header: "Updated",
-        cell: (info) =>
-          info.getValue()
-            ? new Date(info.getValue() as string).toLocaleString()
-            : null,
-        enableResizing: true,
-      },
-      {
-        accessorKey: "createdById",
-        header: "By",
-        cell: (info) =>
-          EditableCell(
-            info.getValue()
-              ? new String(info.getValue() as string).toLocaleString()
-              : null,
-          ),
-        enableResizing: true,
-      },
-    ],
-    [],
-  );
+      ...columnDefs.map((colDef) => ({
+        accessorKey: `customFields.${colDef.name}`,
+        header: colDef.name,
+        cell: (info: { getValue: () => unknown; row: { original: any } }) => {
+          const value = info.getValue();
+          const postId = info.row.original.id;
 
-  // Proper data fetching via TRPC - need to actually call the hook
-  const { data } = api.post.getAll.useQuery();
+          // Render EditableCell for editable fields
+          return (
+            <EditableCell
+              value={value}
+              postId={postId}
+              columnId={colDef.name}
+              columnType={colDef.type}
+            />
+          );
+        },
+        meta: {
+          type: colDef.type,
+          isRequired: colDef.isRequired,
+        },
+      })),
+    ],
+    [columnDefs],
+  );
 
   // Memoized columns for better performance
   const table = useReactTable({
-    data: data ?? [], // Fallback to empty array if data is undefined
+    data: posts ?? [], // Fallback to empty array if data is undefined
     columns,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
     columnResizeMode: "onChange", // or 'onEnd'
     meta: {},
   });
-
   return (
     <div className="mx-auto w-full p-4">
       <table className="min-w-full table-fixed divide-y divide-gray-200">
@@ -109,6 +107,9 @@ export function AirTable() {
                   />
                 </th>
               ))}
+              <th>
+                <AddColumnButton />
+              </th>
             </tr>
           ))}
         </thead>
@@ -125,6 +126,21 @@ export function AirTable() {
               ))}
             </tr>
           ))}
+          <tr>
+            <td>
+              <button
+                type="submit"
+                className="rounded-full bg-white/10 px-10 py-3 font-semibold text-black transition hover:bg-white/20"
+                disabled={createPost.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  createPost.mutate({ name });
+                }}
+              >
+                {createPost.isPending ? "Submitting..." : "Add Row"}
+              </button>
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
