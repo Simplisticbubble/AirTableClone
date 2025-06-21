@@ -136,8 +136,9 @@ const EditableCell = ({
       case "date":
         return (
           <input
-            type="datetime-local"
-            value={value ? new Date(value).toISOString().slice(0, 16) : ""}
+            title="cell"
+            type="date"
+            value={value ? new Date(value).toISOString().split("T")[0] : ""}
             onChange={(e) => setValue(e.target.value)}
             onBlur={handleUpdate}
             onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
@@ -148,6 +149,7 @@ const EditableCell = ({
         return (
           <input
             type="text"
+            title="cell"
             value={value ?? ""}
             onChange={(e) => setValue(e.target.value)}
             onBlur={handleUpdate}

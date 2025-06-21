@@ -26,6 +26,11 @@ export function AirTable() {
       setName("");
     },
   });
+  const removeColumn = api.post.removeColumn.useMutation({
+    onSuccess: async () => {
+      await utils.post.invalidate();
+    },
+  });
   const columns = useMemo(
     () => [
       {
@@ -48,7 +53,18 @@ export function AirTable() {
       },
       ...columnDefs.map((colDef) => ({
         accessorKey: `customFields.${colDef.name}`,
-        header: colDef.name,
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span>{colDef.name}</span>
+            <button
+              onClick={() => removeColumn.mutate({ columnName: colDef.name })}
+              className="text-xs text-red-500 hover:text-red-700"
+              title="Remove column"
+            >
+              ×
+            </button>
+          </div>
+        ),
         cell: (info: { getValue: () => unknown; row: { original: any } }) => {
           const value = info.getValue();
           const postId = info.row.original.id;
@@ -107,7 +123,7 @@ export function AirTable() {
                   />
                 </th>
               ))}
-              <th>
+              <th className="relative text-left text-xs font-medium tracking-wider text-gray-600 uppercase">
                 <AddColumnButton />
               </th>
             </tr>
@@ -119,7 +135,7 @@ export function AirTable() {
               {row.getVisibleCells().map((cell) => (
                 <td
                   key={cell.id}
-                  className="px-6 py-4 whitespace-nowrap text-black"
+                  className="border-2 border-gray-200 px-6 py-4 whitespace-nowrap text-black hover:border-blue-600"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
@@ -130,14 +146,14 @@ export function AirTable() {
             <td>
               <button
                 type="submit"
-                className="rounded-full bg-white/10 px-10 py-3 font-semibold text-black transition hover:bg-white/20"
+                className="cursor-pointer border-2 border-gray-200 bg-white/10 px-10 py-3 font-semibold text-black transition hover:bg-gray-400"
                 disabled={createPost.isPending}
                 onClick={(e) => {
                   e.preventDefault();
                   createPost.mutate({ name });
                 }}
               >
-                {createPost.isPending ? "Submitting..." : "Add Row"}
+                {createPost.isPending ? "..." : "+"}
               </button>
             </td>
           </tr>

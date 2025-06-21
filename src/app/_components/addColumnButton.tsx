@@ -89,14 +89,14 @@ export function AddColumnButton() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+        className="relative cursor-pointer bg-gray-300 px-10 py-3 text-left text-sm font-medium tracking-wider text-gray-900 uppercase hover:bg-gray-400"
         disabled={addColumn.isPending} // Changed from isLoading to isPending for newer versions
       >
-        Add Column
+        +
       </button>
 
       {isOpen && (
-        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black text-black">
+        <div className="bg-opacity-50 fixed inset-0 z-50 flex items-center justify-center bg-black/50 text-black">
           <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Add New Column</h2>
@@ -199,7 +199,7 @@ export function AddColumnButton() {
                   disabled={addColumn.isPending}
                   className="rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
                 >
-                  {addColumn.isPending ? "Adding..." : "Add Column"}
+                  {addColumn.isPending ? "Loading..." : "Save"}
                 </button>
               </div>
             </form>

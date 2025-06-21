@@ -194,4 +194,40 @@ export const postRouter = createTRPCRouter({
   getColumnDefinitions: protectedProcedure.query(({ ctx }) => {
     return ctx.db.columnDefinition.findMany();
   }),
+  removeColumn: protectedProcedure
+    .input(
+      z.object({
+        columnName: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // First delete the column definition
+      await ctx.db.columnDefinition.delete({
+        where: { name: input.columnName },
+      });
+
+      // Then remove this column from all posts' customFields
+      const posts = await ctx.db.post.findMany();
+
+      await ctx.db.$transaction(
+        posts.map((post) => {
+          // Type-safe handling of customFields
+          const currentFields =
+            (post.customFields as Record<string, unknown>) ?? {};
+          const { [input.columnName]: _, ...remainingFields } = currentFields;
+
+          return ctx.db.post.update({
+            where: { id: post.id },
+            data: {
+              customFields: remainingFields as Prisma.JsonObject,
+            },
+          });
+        }),
+      );
+
+      return {
+        success: true,
+        message: `Column '${input.columnName}' removed successfully`,
+      };
+    }),
 });

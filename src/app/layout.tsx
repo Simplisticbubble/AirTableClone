@@ -30,7 +30,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`}>
       <body>
-        <TopNav />
         <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>
     </html>
