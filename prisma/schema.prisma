@@ -14,28 +14,7 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
 
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-    customFields Json?      // This will store all dynamic columns
-    @@index([name])
-}
-
-
-
-model ColumnDefinition {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  type        String   // "string", "number", "boolean", "date"
-  isRequired  Boolean  @default(false)
-  defaultValue String?
-  createdAt   DateTime @default(now())
-}
 
 // Necessary for Next auth
 model Account {
@@ -73,7 +52,9 @@ model User {
     image         String?
     accounts      Account[]
     sessions      Session[]
+    tabs    Tab[]
     posts         Post[]
+    columns     ColumnDefinition[]
 }
 
 model VerificationToken {
@@ -82,4 +63,55 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+
+model Tab {
+  id           Int       @id @default(autoincrement())
+  name         String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  createdBy    User      @relation(fields: [createdById], references: [id])
+  createdById  String
+  
+  posts        Post[]
+  columns      ColumnDefinition[]
+  
+  @@unique([createdById, name]) // Ensure tab names are unique per user
+}
+
+model Post {
+  id           Int       @id @default(autoincrement())
+  name         String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  createdBy    User      @relation(fields: [createdById], references: [id])
+  createdById  String
+  
+  tab          Tab       @relation(fields: [tabId], references: [id])
+  tabId        Int
+  
+  customFields Json?     // Stores all dynamic column values
+  
+  @@index([name])
+  @@index([tabId])       // For faster queries filtering by tab
+}
+
+model ColumnDefinition {
+  id           Int       @id @default(autoincrement())
+  name         String
+  type         String    // "string", "number", "boolean", "date"
+  isRequired   Boolean   @default(false)
+  defaultValue String?
+  createdAt    DateTime  @default(now())
+  
+  tab          Tab       @relation(fields: [tabId], references: [id])
+  tabId        Int
+  
+  createdBy    User      @relation(fields: [createdById], references: [id])
+  createdById  String
+  
+  @@unique([tabId, name]) // Column names should be unique within a tab
 }

@@ -5,7 +5,7 @@ import { api } from "~/trpc/react";
 
 type ColumnType = "string" | "number" | "boolean" | "date";
 
-export function AddColumnButton() {
+export function AddColumnButton({ tabId }: { tabId: number }) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
   const [type, setType] = useState<ColumnType>("string");
@@ -16,8 +16,8 @@ export function AddColumnButton() {
     onSuccess: async () => {
       try {
         await Promise.all([
-          utils.post.invalidate(),
-          utils.post.getColumnDefinitions.invalidate(),
+          utils.post.getAll.invalidate({ tabId }),
+          utils.post.getColumnDefinitions.invalidate({ tabId }),
         ]);
       } catch (error) {
         console.error("Error invalidating queries:", error);
@@ -61,6 +61,7 @@ export function AddColumnButton() {
       }
 
       await addColumn.mutateAsync({
+        tabId,
         name,
         type,
         defaultValue: processedValue,

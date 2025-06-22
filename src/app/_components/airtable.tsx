@@ -12,40 +12,47 @@ import {
 import { AddColumnButton } from "./addColumnButton";
 import EditableCell from "./editableCall";
 
-export function AirTable() {
-  // const { data } = api.post.getAll.useQuery();
-  const { data, isLoading } = api.post.getAllWithColumns.useQuery();
+export function AirTable({ tabId }: { tabId: number }) {
+  const { data, isLoading } = api.post.getAll.useQuery({ tabId });
+  const { data: columnData } = api.post.getColumnDefinitions.useQuery({
+    tabId,
+  });
+
   const posts = data?.posts ?? [];
-  const columnDefs = data?.columns ?? [];
-  // Generate columns with proper typing
+  const columnDefs = columnData ?? [];
+
   const utils = api.useUtils();
   const [name, setName] = useState("");
+
   const createPost = api.post.create.useMutation({
     onSuccess: async () => {
-      await utils.post.invalidate();
+      await utils.post.getAll.invalidate({ tabId });
       setName("");
     },
   });
+
   const removeColumn = api.post.removeColumn.useMutation({
     onSuccess: async () => {
-      await utils.post.invalidate();
+      await Promise.all([
+        utils.post.getAll.invalidate({ tabId }),
+        utils.post.getColumnDefinitions.invalidate({ tabId }),
+      ]);
     },
   });
-  const columns = useMemo(
+
+  const columns = useMemo<
+    ColumnDef<Post & { customFields: Record<string, unknown> }>[]
+  >(
     () => [
-      {
-        accessorKey: "id",
-        header: "ID",
-        cell: (info: { getValue: () => unknown }) =>
-          info.getValue()?.toString() ?? "",
-      },
       {
         accessorKey: "name",
         header: "Name",
-        cell: (info: { getValue: () => unknown; row: { original: any } }) => (
+        size: 200,
+        cell: (info) => (
           <EditableCell
             value={info.getValue()}
             postId={info.row.original.id}
+            tabId={tabId}
             columnId="name"
             columnType="string"
           />
@@ -55,27 +62,38 @@ export function AirTable() {
         accessorKey: `customFields.${colDef.name}`,
         header: () => (
           <div className="flex items-center gap-2">
-            <span>{colDef.name}</span>
+            <span className="font-medium">{colDef.name}</span>
+            <span className="text-xs text-gray-500">({colDef.type})</span>
+            {colDef.isRequired && (
+              <span className="text-xs text-red-500">*</span>
+            )}
             <button
-              onClick={() => removeColumn.mutate({ columnName: colDef.name })}
-              className="text-xs text-red-500 hover:text-red-700"
+              onClick={() =>
+                removeColumn.mutate({
+                  tabId,
+                  columnName: colDef.name,
+                })
+              }
+              className="ml-auto text-xs text-red-500 hover:text-red-700"
               title="Remove column"
             >
               ×
             </button>
           </div>
         ),
-        cell: (info: { getValue: () => unknown; row: { original: any } }) => {
+        size: 180,
+        cell: (info) => {
           const value = info.getValue();
           const postId = info.row.original.id;
 
-          // Render EditableCell for editable fields
           return (
             <EditableCell
               value={value}
               postId={postId}
+              tabId={tabId}
               columnId={colDef.name}
               columnType={colDef.type}
+              isRequired={colDef.isRequired}
             />
           );
         },
@@ -85,80 +103,146 @@ export function AirTable() {
         },
       })),
     ],
-    [columnDefs],
+    [columnDefs, tabId],
   );
 
-  // Memoized columns for better performance
   const table = useReactTable({
-    data: posts ?? [], // Fallback to empty array if data is undefined
+    data: posts,
     columns,
     getCoreRowModel: getCoreRowModel(),
     enableColumnResizing: true,
-    columnResizeMode: "onChange", // or 'onEnd'
-    meta: {},
+    columnResizeMode: "onChange",
   });
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="text-lg font-medium text-gray-500">
+          Loading table data...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full p-4">
-      <table className="min-w-full table-fixed divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  colSpan={header.colSpan}
-                  className="relative px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
-                  style={{ width: header.getSize() }} // ← Crucial for resizing
-                >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                  )}
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-xl font-semibold">Table View</h2>
+        <div className="flex gap-2">
+          <AddColumnButton tabId={tabId} />
+        </div>
+      </div>
 
-                  {/* Resize handle */}
-                  <div
-                    onMouseDown={header.getResizeHandler()} // ← Must use react-table's handler
-                    onTouchStart={header.getResizeHandler()}
-                    className={`absolute top-0 right-0 h-full w-1 cursor-col-resize touch-none bg-blue-500 opacity-0 select-none hover:opacity-100 ${header.column.getIsResizing() ? "bg-blue-700 !opacity-100" : ""} `}
-                  />
-                </th>
-              ))}
-              <th className="relative text-left text-xs font-medium tracking-wider text-gray-600 uppercase">
-                <AddColumnButton />
-              </th>
-            </tr>
-          ))}
-        </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="hover:bg-gray-50">
-              {row.getVisibleCells().map((cell) => (
-                <td
-                  key={cell.id}
-                  className="border-2 border-gray-200 px-6 py-4 whitespace-nowrap text-black hover:border-blue-600"
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-          <tr>
-            <td>
-              <button
-                type="submit"
-                className="cursor-pointer border-2 border-gray-200 bg-white/10 px-10 py-3 font-semibold text-black transition hover:bg-gray-400"
-                disabled={createPost.isPending}
-                onClick={(e) => {
-                  e.preventDefault();
-                  createPost.mutate({ name });
-                }}
-              >
-                {createPost.isPending ? "..." : "+"}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    className="relative px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-700 uppercase"
+                    style={{ width: header.getSize() }}
+                  >
+                    <div className="flex items-center">
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                    </div>
+                    <div
+                      onMouseDown={header.getResizeHandler()}
+                      onTouchStart={header.getResizeHandler()}
+                      className={`absolute top-0 right-0 h-full w-1 cursor-col-resize touch-none bg-blue-500 opacity-0 hover:opacity-100 ${
+                        header.column.getIsResizing() ? "!opacity-100" : ""
+                      }`}
+                    />
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id} className="hover:bg-gray-50">
+                {row.getVisibleCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    className="px-6 py-4 text-sm whitespace-nowrap text-gray-900"
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {posts.length === 0 && (
+          <div className="flex h-32 items-center justify-center bg-white">
+            <div className="text-gray-500">No data available</div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex items-center gap-2">
+        {/* <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="New row name"
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && name.trim()) {
+              createPost.mutate({
+                tabId,
+                name: name.trim(),
+                customFields: columnDefs.reduce(
+                  (acc, col) => {
+                    if (col.defaultValue) {
+                      let value: any = col.defaultValue;
+                      if (col.type === "number") value = Number(value);
+                      if (col.type === "boolean") value = value === "true";
+                      if (col.type === "date")
+                        value = new Date(value).toISOString();
+                      acc[col.name] = value;
+                    }
+                    return acc;
+                  },
+                  {} as Record<string, unknown>,
+                ),
+              });
+            }
+          }}
+        /> */}
+        <button
+          onClick={() => {
+            createPost.mutate({
+              tabId,
+              name: "",
+              customFields: columnDefs.reduce(
+                (acc, col) => {
+                  if (col.defaultValue) {
+                    let value: any = col.defaultValue;
+                    if (col.type === "number") value = Number(value);
+                    if (col.type === "boolean") value = value === "true";
+                    if (col.type === "date")
+                      value = new Date(value).toISOString();
+                    acc[col.name] = value;
+                  }
+                  return acc;
+                },
+                {} as Record<string, unknown>,
+              ),
+            });
+          }}
+          disabled={createPost.isPending}
+          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+        >
+          {createPost.isPending ? "Adding..." : "Add Row"}
+        </button>
+      </div>
     </div>
   );
 }
