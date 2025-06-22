@@ -238,8 +238,8 @@ export const postRouter = createTRPCRouter({
   createTabWithDefaultTable: protectedProcedure
     .input(
       z.object({
-        tabName: z.string().min(1).max(50),
-        tableName: z.string().min(1).max(50).default("Default Table"),
+        tabName: z.string(),
+        tableName: z.string().default("Default Table"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -253,7 +253,7 @@ export const postRouter = createTRPCRouter({
 
       // Create default columns
       const defaultColumns = [
-        { name: "Name", type: "string", isRequired: true },
+        { name: "Name", type: "string", isRequired: false },
         { name: "Status", type: "string", defaultValue: "Active" },
         {
           name: "Created",
@@ -292,5 +292,31 @@ export const postRouter = createTRPCRouter({
       });
 
       return tab;
+    }),
+  // In your postRouter
+  updateTab: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.tab.update({
+        where: { id: input.id },
+        data: { name: input.name },
+      });
+    }),
+  deleteTab: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      // First delete all related posts and columns
+      await ctx.db.post.deleteMany({
+        where: { tabId: input.id },
+      });
+
+      await ctx.db.columnDefinition.deleteMany({
+        where: { tabId: input.id },
+      });
+
+      // Then delete the tab
+      return ctx.db.tab.delete({
+        where: { id: input.id },
+      });
     }),
 });

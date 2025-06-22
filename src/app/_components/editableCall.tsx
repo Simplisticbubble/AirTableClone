@@ -126,6 +126,7 @@ const EditableCell = ({
       case "number":
         return (
           <input
+            title="cell"
             ref={inputRef}
             type="number"
             value={value ?? ""}
@@ -141,6 +142,7 @@ const EditableCell = ({
       case "boolean":
         return (
           <input
+            title="cell"
             type="checkbox"
             checked={!!value}
             onChange={(e) => {
@@ -153,6 +155,7 @@ const EditableCell = ({
       case "date":
         return (
           <input
+            title="cell"
             ref={inputRef}
             type="date"
             value={value ? new Date(value).toISOString().split("T")[0] : ""}
@@ -168,6 +171,7 @@ const EditableCell = ({
       default:
         return (
           <input
+            title="cell"
             ref={inputRef}
             type="text"
             value={value ?? ""}

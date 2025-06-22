@@ -15,31 +15,51 @@ export function CreateTabButton({
   const router = useRouter();
 
   const createTab = api.post.createTabWithDefaultTable.useMutation({
-    onSuccess: async (newTab) => {
-      try {
-        // Invalidate and refetch tabs
-        await utils.post.getTabs.invalidate();
+    onMutate: async (newTabData) => {
+      // Cancel outgoing queries
+      await utils.post.getTabs.cancel();
 
-        // Update the UI immediately with optimistic update
-        utils.post.getTabs.setData(undefined, (old) => {
-          return old ? [...old, newTab] : [newTab];
-        });
+      // Create optimistic tab
+      const optimisticTab = {
+        id: Math.random(), // Temporary ID
+        name: newTabData.tabName,
+        createdById: "", // Will be replaced
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-        // Call the callback with the new tab ID
-        if (onTabCreated) {
-          onTabCreated(newTab.id);
-        }
+      // Update cache optimistically
+      utils.post.getTabs.setData(undefined, (old) => {
+        return old ? [...old, optimisticTab] : [optimisticTab];
+      });
 
-        // Optionally refresh the page to ensure full sync
-        router.refresh();
-      } catch (error) {
-        console.error("Failed to update UI:", error);
-      } finally {
-        setIsCreating(false);
-      }
+      return { optimisticTab };
     },
-    onError: (error) => {
-      console.error("Failed to create tab:", error);
+    onSuccess: (actualTab, variables, context) => {
+      // Replace optimistic tab with actual data
+      utils.post.getTabs.setData(undefined, (old) => {
+        return (
+          old?.map((tab) =>
+            tab.id === context?.optimisticTab.id ? actualTab : tab,
+          ) ?? [actualTab]
+        );
+      });
+
+      // Call callback if provided
+      onTabCreated?.(actualTab.id);
+
+      // Refresh the router to ensure updates
+      router.refresh();
+    },
+    onError: (error, variables, context) => {
+      // Rollback optimistic update
+      utils.post.getTabs.setData(undefined, (old) => {
+        return old?.filter((tab) => tab.id !== context?.optimisticTab.id) ?? [];
+      });
+    },
+    onSettled: () => {
+      // Always invalidate to ensure sync
+      void utils.post.getTabs.invalidate();
       setIsCreating(false);
     },
   });
@@ -55,9 +75,9 @@ export function CreateTabButton({
     <button
       onClick={handleCreate}
       disabled={isCreating || createTab.isPending}
-      className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+      className="rounded bg-gray-600 px-4 py-2 text-white hover:bg-gray-700"
     >
-      {createTab.isPending ? "Creating..." : "Create New Tab"}
+      {createTab.isPending ? "..." : "+"}
     </button>
   );
 }

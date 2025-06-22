@@ -44,26 +44,26 @@ export function AirTable({ tabId }: { tabId: number }) {
     ColumnDef<Post & { customFields: Record<string, unknown> }>[]
   >(
     () => [
-      {
-        accessorKey: "name",
-        header: "Name",
-        size: 200,
-        cell: (info) => (
-          <EditableCell
-            value={info.getValue()}
-            postId={info.row.original.id}
-            tabId={tabId}
-            columnId="name"
-            columnType="string"
-          />
-        ),
-      },
+      // {
+      //   accessorKey: "name",
+      //   header: "Name",
+      //   size: 200,
+      //   cell: (info) => (
+      //     <EditableCell
+      //       value={info.getValue()}
+      //       postId={info.row.original.id}
+      //       tabId={tabId}
+      //       columnId="name"
+      //       columnType="string"
+      //     />
+      //   ),
+      // },
       ...columnDefs.map((colDef) => ({
         accessorKey: `customFields.${colDef.name}`,
         header: () => (
           <div className="flex items-center gap-2">
             <span className="font-medium">{colDef.name}</span>
-            <span className="text-xs text-gray-500">({colDef.type})</span>
+            {/* <span className="text-xs text-gray-500">({colDef.type})</span> */}
             {colDef.isRequired && (
               <span className="text-xs text-red-500">*</span>
             )}
@@ -74,7 +74,7 @@ export function AirTable({ tabId }: { tabId: number }) {
                   columnName: colDef.name,
                 })
               }
-              className="ml-auto text-xs text-red-500 hover:text-red-700"
+              className="ml-auto text-xs text-gray-500 hover:text-gray-700"
               title="Remove column"
             >
               ×
@@ -125,12 +125,12 @@ export function AirTable({ tabId }: { tabId: number }) {
   }
 
   return (
-    <div className="mx-auto w-full p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Table View</h2>
-        <div className="flex gap-2">
+    <div className="mx-auto w-full">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold"></h2>
+        {/* <div className="flex gap-2">
           <AddColumnButton tabId={tabId} />
-        </div>
+        </div> */}
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
@@ -160,6 +160,9 @@ export function AirTable({ tabId }: { tabId: number }) {
                     />
                   </th>
                 ))}
+                <th className="relative text-left text-xs font-medium tracking-wider text-gray-700 uppercase">
+                  <AddColumnButton tabId={tabId} />
+                </th>
               </tr>
             ))}
           </thead>
@@ -186,36 +189,7 @@ export function AirTable({ tabId }: { tabId: number }) {
         )}
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
-        {/* <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="New row name"
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && name.trim()) {
-              createPost.mutate({
-                tabId,
-                name: name.trim(),
-                customFields: columnDefs.reduce(
-                  (acc, col) => {
-                    if (col.defaultValue) {
-                      let value: any = col.defaultValue;
-                      if (col.type === "number") value = Number(value);
-                      if (col.type === "boolean") value = value === "true";
-                      if (col.type === "date")
-                        value = new Date(value).toISOString();
-                      acc[col.name] = value;
-                    }
-                    return acc;
-                  },
-                  {} as Record<string, unknown>,
-                ),
-              });
-            }
-          }}
-        /> */}
+      <div className="mt-0 flex items-center gap-2">
         <button
           onClick={() => {
             createPost.mutate({
@@ -238,9 +212,9 @@ export function AirTable({ tabId }: { tabId: number }) {
             });
           }}
           disabled={createPost.isPending}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+          className="bg-gray-300 px-8 py-2 text-sm text-black hover:bg-gray-500 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
-          {createPost.isPending ? "Adding..." : "Add Row"}
+          {createPost.isPending ? "Adding..." : "+"}
         </button>
       </div>
     </div>
